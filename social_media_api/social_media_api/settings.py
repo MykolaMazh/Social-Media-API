@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "social_media.apps.SocialMediaConfig",
     "user.apps.UserConfig",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 MIDDLEWARE = [
