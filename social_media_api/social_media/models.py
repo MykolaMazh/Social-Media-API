@@ -1,6 +1,5 @@
 from django.db import models
-
-from django.contrib.auth.models import User
+from django.conf import settings
 
 
 class Category(models.Model):
@@ -19,7 +18,7 @@ class Tag(models.Model):
 
 class Post(models.Model):
     title = models.CharField(max_length=100)
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -29,14 +28,14 @@ class Post(models.Model):
         Category, on_delete=models.SET_NULL, null=True, related_name="posts"
     )
     tags = models.ManyToManyField(Tag, blank=True, null=True)
-    liked = models.ManyToManyField(User, blank=True, null=True)
+    liked = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, null=True)
 
     def __str__(self) -> str:
         return f"{self.title}/{self.author}"
 
 
 class Comment(models.Model):
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     commented_date = models.DateTimeField(auto_now_add=True)
     content = models.TextField()
     post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True)
