@@ -2,13 +2,6 @@ from django.db import models
 from django.conf import settings
 
 
-class Category(models.Model):
-    title = models.CharField(max_length=100)
-
-    def __str__(self):
-        return self.title
-
-
 class Tag(models.Model):
     title = models.CharField(max_length=50)
 
@@ -24,9 +17,6 @@ class Post(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     photo = models.ImageField(upload_to="photoes/%Y/%m/%d/", blank=True, null=True)
     views = models.IntegerField(editable=False, null=True)
-    category = models.ForeignKey(
-        Category, on_delete=models.SET_NULL, null=True, related_name="posts"
-    )
     tags = models.ManyToManyField(Tag, blank=True, null=True)
     liked = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, null=True)
 
