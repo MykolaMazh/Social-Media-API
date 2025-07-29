@@ -47,6 +47,10 @@ class UserManager(DjangoUserManager):
 class User(AbstractUser):
     username = None
     email = models.EmailField(_("email address"), unique=True)
+    image = models.ImageField(
+        upload_to="user_images/%Y/%m/%d/", blank=True, null=True
+    )
+    about_me = models.TextField(blank=True, null=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

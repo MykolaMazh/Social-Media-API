@@ -45,7 +45,9 @@ class Migration(migrations.Migration):
                 (
                     "photo",
                     models.ImageField(
-                        blank=True, null=True, upload_to="photoes/%Y/%m/%d/"
+                        blank=True,
+                        null=True,
+                        upload_to="post_images/%Y/%m/%d/",
                     ),
                 ),
                 ("views", models.IntegerField(editable=False, null=True)),

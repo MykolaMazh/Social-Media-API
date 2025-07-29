@@ -12,12 +12,16 @@ class Tag(models.Model):
 class Post(models.Model):
     title = models.CharField(max_length=100)
     author = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="posts"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="posts",
     )
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    photo = models.ImageField(upload_to="photoes/%Y/%m/%d/", blank=True, null=True)
+    photo = models.ImageField(
+        upload_to="post_images/%Y/%m/%d/", blank=True, null=True
+    )
     views = models.IntegerField(editable=False, null=True)
     tags = models.ManyToManyField(Tag, blank=True)
     liked = models.ManyToManyField(
@@ -30,11 +34,15 @@ class Post(models.Model):
 
 class Comment(models.Model):
     author = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="comments"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="comments",
     )
     commented_date = models.DateTimeField(auto_now_add=True)
     content = models.TextField()
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
+    post = models.ForeignKey(
+        Post, on_delete=models.CASCADE, related_name="comments"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
