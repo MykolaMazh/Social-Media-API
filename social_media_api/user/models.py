@@ -51,6 +51,9 @@ class User(AbstractUser):
         upload_to="user_images/%Y/%m/%d/", blank=True, null=True
     )
     about_me = models.TextField(blank=True, null=True)
+    following = models.ManyToManyField(
+        "self", symmetrical=False, related_name="followers", blank=True
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
