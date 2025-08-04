@@ -4,7 +4,7 @@ from django.db.models import Count, Sum
 
 
 class UserSerializer(serializers.ModelSerializer):
-    posts_written = serializers.SerializerMethodField()
+    posts_written = serializers.IntegerField(read_only=True)
     followers = serializers.SerializerMethodField()
     posts_reactions = serializers.SerializerMethodField()
 
@@ -25,18 +25,14 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "is_staff")
         extra_kwargs = {"password": {"write_only": True, "min_length": 5}}
 
-    def get_posts_written(self, obj):
-        return obj.posts.count()
+    def get_posts_reactions(self, obj):
+        return {"Liked": obj.total_likes, "Disliked": obj.total_dislikes}
 
     def get_followers(self, obj):
-        return f"{obj.followers.count()} / {list(obj.followers.values_list('email', flat=True))}"
-
-    def get_posts_reactions(self, obj):
-        posts = obj.posts.annotate(
-            num_likes=Count("liked"), num_dislikes=Count("disliked")
-        )
-        reactions = posts.aggregate(Sum("num_likes"), Sum("num_dislikes"))
-        return f"Liked:{reactions['num_likes__sum'] or 0} / Disliked:{reactions['num_dislikes__sum'] or 0}"
+        return {
+            "count": obj.followers_count,
+            "emails": list(obj.followers.values_list("email", flat=True)),
+        }
 
     def create(self, validated_data):
         return get_user_model().objects.create_user(**validated_data)
