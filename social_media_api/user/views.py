@@ -1,3 +1,5 @@
+from django.contrib.auth import get_user_model
+from django.db.models import Count, Sum
 from rest_framework import generics
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
@@ -30,4 +32,14 @@ class RetrieveUpdateUserView(generics.RetrieveUpdateAPIView):
     permission_classes = (IsAuthenticated,)
 
     def get_object(self):
-        return self.request.user
+        return (
+            get_user_model()
+            .objects.annotate(
+                posts_written=Count("posts"),
+                followers_count=Count("followers"),
+                total_likes=Sum("posts__liked"),
+                total_dislikes=Sum("posts__disliked"),
+            )
+            .prefetch_related("followers")
+            .get(pk=self.request.user.pk)
+        )
