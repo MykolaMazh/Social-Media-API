@@ -46,3 +46,25 @@ class UserSerializer(serializers.ModelSerializer):
             user.save()
 
         return user
+
+
+class UserListSerializer(serializers.ModelSerializer):
+    posts_written = serializers.IntegerField()
+    followers_count = serializers.IntegerField()
+    posts_reactions = serializers.SerializerMethodField()
+
+    class Meta:
+        model = get_user_model()
+        fields = (
+            "id",
+            "email",
+            "posts_written",
+            "posts_reactions",
+            "followers_count",
+        )
+
+    def get_posts_reactions(self, obj):
+        return {"Liked": obj.total_likes, "Disliked": obj.total_dislikes}
+
+    def get_followers(self, obj):
+        return {"count": obj.followers_count}
