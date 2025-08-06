@@ -49,7 +49,7 @@ class UserRetrieveSerializer(UserListSerializer):
         }
 
 
-class UserSerializer(UserRetrieveSerializer):
+class UserUpdateSerializer(UserRetrieveSerializer):
     posts_written = serializers.IntegerField(read_only=True)
 
     class Meta:
