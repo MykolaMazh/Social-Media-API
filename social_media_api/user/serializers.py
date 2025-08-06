@@ -3,8 +3,6 @@ from rest_framework import serializers
 from django.db.models import Count, Sum
 
 
-
-
 class UserListSerializer(serializers.ModelSerializer):
     posts_written = serializers.IntegerField()
     followers_count = serializers.IntegerField()
