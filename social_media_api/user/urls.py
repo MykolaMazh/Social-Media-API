@@ -10,6 +10,7 @@ from user.views import (
     LogoutView,
     RetrieveUpdateUserView,
     ListUserView,
+    RetrieveUserView,
 )
 
 urlpatterns = [
@@ -19,6 +20,7 @@ urlpatterns = [
     path("token/logout/", LogoutView.as_view(), name="invalidate_refresh"),
     path("me/", RetrieveUpdateUserView.as_view(), name="me"),
     path("users/", ListUserView.as_view(), name="users"),
+    path("users/<int:pk>/", RetrieveUserView.as_view(), name="users"),
 ]
 
 app_name = "user"

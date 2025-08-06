@@ -6,7 +6,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
-from user.serializers import UserSerializer, UserListSerializer
+from user.serializers import (
+    UserSerializer,
+    UserListSerializer,
+    UserRetrieveSerializer,
+)
 
 
 class CreateUserView(generics.CreateAPIView):
@@ -37,6 +41,20 @@ class ListUserView(generics.ListAPIView):
             total_likes=Sum("posts__liked"),
             total_dislikes=Sum("posts__disliked"),
         )
+
+
+class RetrieveUserView(generics.RetrieveAPIView):
+    serializer_class = UserRetrieveSerializer
+    queryset = (
+        get_user_model()
+        .objects.annotate(
+            posts_written=Count("posts"),
+            followers_count=Count("followers"),
+            total_likes=Sum("posts__liked"),
+            total_dislikes=Sum("posts__disliked"),
+        )
+        .prefetch_related("followers")
+    )
 
 
 class RetrieveUpdateUserView(generics.RetrieveUpdateAPIView):
