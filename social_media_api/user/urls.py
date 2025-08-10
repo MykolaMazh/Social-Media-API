@@ -11,6 +11,7 @@ from user.views import (
     RetrieveUpdateUserView,
     ListUserView,
     RetrieveUserView,
+    FollowUserAPIView,
 )
 
 urlpatterns = [
@@ -21,6 +22,7 @@ urlpatterns = [
     path("me/", RetrieveUpdateUserView.as_view(), name="me"),
     path("users/", ListUserView.as_view(), name="users"),
     path("users/<int:pk>/", RetrieveUserView.as_view(), name="users"),
+    path("follow/<int:pk>/", FollowUserAPIView.as_view(), name="follow"),
 ]
 
 app_name = "user"
