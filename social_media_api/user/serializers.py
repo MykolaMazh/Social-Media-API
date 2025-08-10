@@ -82,7 +82,11 @@ class UserUpdateSerializer(UserRetrieveSerializer):
 
     def update(self, instance, validated_data):
         password = validated_data.pop("password", None)
+        following_data = validated_data.pop("following", None)
         user = super().update(instance, validated_data)
+
+        if following_data is not None:
+            instance.following.set([user["id"] for user in following_data])
 
         if password:
             user.set_password(password)
