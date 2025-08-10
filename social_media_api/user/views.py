@@ -10,11 +10,12 @@ from user.serializers import (
     UserUpdateSerializer,
     UserListSerializer,
     UserRetrieveSerializer,
+    UserCreateSerializer,
 )
 
 
 class CreateUserView(generics.CreateAPIView):
-    serializer_class = UserUpdateSerializer
+    serializer_class = UserCreateSerializer
 
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
@@ -58,7 +59,6 @@ class RetrieveUserView(generics.RetrieveAPIView):
 
 
 class RetrieveUpdateUserView(generics.RetrieveUpdateAPIView):
-    serializer_class = UserUpdateSerializer
     permission_classes = (IsAuthenticated,)
 
     def get_object(self):
@@ -73,3 +73,8 @@ class RetrieveUpdateUserView(generics.RetrieveUpdateAPIView):
             .prefetch_related("followers")
             .get(pk=self.request.user.pk)
         )
+
+    def get_serializer_class(self):
+        if self.request.method == "GET":
+            return UserRetrieveSerializer
+        return UserUpdateSerializer

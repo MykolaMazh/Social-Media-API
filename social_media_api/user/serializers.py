@@ -1,6 +1,21 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from django.db.models import Count, Sum
+
+
+class UserCreateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = get_user_model()
+        fields = (
+            "email",
+            "password",
+            "image",
+            "about_me",
+        )
+        extra_kwargs = {"password": {"write_only": True, "min_length": 5}}
+
+    def create(self, validated_data):
+        return get_user_model().objects.create_user(**validated_data)
 
 
 class UserListSerializer(serializers.ModelSerializer):
@@ -57,28 +72,19 @@ class UserRetrieveSerializer(UserListSerializer):
 
 
 class UserUpdateSerializer(UserRetrieveSerializer):
-    posts_written = serializers.IntegerField(read_only=True)
-    following = UserShortSerializer(many=True, read_only=False)
+    following = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=get_user_model().objects.all()
+    )
 
     class Meta:
         model = get_user_model()
         fields = (
-            "id",
-            "email",
             "password",
-            "is_staff",
             "image",
             "about_me",
-            "posts_written",
-            "posts_reactions",
             "following",
-            "followers",
         )
-        read_only_fields = ("id", "is_staff")
         extra_kwargs = {"password": {"write_only": True, "min_length": 5}}
-
-    def create(self, validated_data):
-        return get_user_model().objects.create_user(**validated_data)
 
     def update(self, instance, validated_data):
         password = validated_data.pop("password", None)
@@ -86,7 +92,7 @@ class UserUpdateSerializer(UserRetrieveSerializer):
         user = super().update(instance, validated_data)
 
         if following_data is not None:
-            instance.following.set([user["id"] for user in following_data])
+            instance.following.set(following_data)
 
         if password:
             user.set_password(password)
