@@ -25,8 +25,15 @@ class UserListSerializer(serializers.ModelSerializer):
         return {"count": obj.followers_count}
 
 
+class UserShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ["id", "email"]
+
+
 class UserRetrieveSerializer(UserListSerializer):
     followers = serializers.SerializerMethodField()
+    following = UserShortSerializer(many=True, read_only=True)
 
     class Meta:
         model = get_user_model()
@@ -51,6 +58,7 @@ class UserRetrieveSerializer(UserListSerializer):
 
 class UserUpdateSerializer(UserRetrieveSerializer):
     posts_written = serializers.IntegerField(read_only=True)
+    following = UserShortSerializer(many=True, read_only=False)
 
     class Meta:
         model = get_user_model()

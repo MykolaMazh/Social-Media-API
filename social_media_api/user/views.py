@@ -14,7 +14,7 @@ from user.serializers import (
 
 
 class CreateUserView(generics.CreateAPIView):
-    serializer_class = UserSerializer
+    serializer_class = UserUpdateSerializer
 
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
