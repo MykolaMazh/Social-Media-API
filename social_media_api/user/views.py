@@ -7,6 +7,14 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiExample,
+    OpenApiResponse,
+    OpenApiParameter,
+)
+from drf_spectacular.types import OpenApiTypes
+from typing import List
 
 from user.serializers import (
     UserUpdateSerializer,
@@ -97,6 +105,50 @@ class RetrieveUpdateUserView(generics.RetrieveUpdateAPIView):
 class FollowUserAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Follow the user",
+        description="Follow the user with no request body",
+        parameters=[
+            OpenApiParameter(
+                name="id",
+                description="The ID of the user to follow",
+                required=True,
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+            )
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=OpenApiTypes.JSON_PTR,
+                description="Following the user",
+                examples=[
+                    OpenApiExample(
+                        name="Successfull followed",
+                        value={
+                            "message": "You are now following 'user2@gmail.com'."
+                        },
+                    ),
+                    OpenApiExample(
+                        name="Already followed",
+                        value={
+                            "message": "You already follow 'user2@gmail.com'."
+                        },
+                    ),
+                ],
+            ),
+            400: OpenApiResponse(
+                response=OpenApiTypes.JSON_PTR,
+                description="Following yourself",
+                examples=[
+                    OpenApiExample(
+                        name="Can't follow",
+                        value={"error": "You cannot follow yourself."},
+                        description="trying to follow yourself",
+                    ),
+                ],
+            ),
+        },
+    )
     def patch(self, request, pk):
         user = request.user
         user_to_follow = get_object_or_404(User, pk=pk)
@@ -117,14 +169,39 @@ class FollowUserAPIView(APIView):
             status=status.HTTP_200_OK,
         )
 
+    @extend_schema(
+        summary="Unfollow the user",
+        description="Unfollow the user with no request body",
+        parameters=[
+            OpenApiParameter(
+                name="id",
+                description="The ID of the user to unfollow",
+                required=True,
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+            )
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=OpenApiTypes.JSON_PTR,
+                description="Unfollowing the user",
+                examples=[
+                    OpenApiExample(
+                        name="Successfull",
+                        value={
+                            "message": "You are now not follow 'user2@gmail.com'."
+                        },
+                    )
+                ],
+            )
+        },
+    )
     def delete(self, request, pk):
         user = request.user
         user_to_follow = get_object_or_404(User, pk=pk)
 
         user.following.remove(user_to_follow)
         return Response(
-            {
-                "message": f"You are now not following '{user_to_follow.email}'."
-            },
+            {"message": f"You are now not follow '{user_to_follow.email}'."},
             status=status.HTTP_200_OK,
         )
