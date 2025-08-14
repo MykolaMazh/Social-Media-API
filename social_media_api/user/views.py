@@ -44,6 +44,37 @@ class LogoutView(APIView):
             return Response({"error": "Invalid token"}, status=400)
 
 
+@extend_schema(
+    summary="Users list",
+    description="Get users list. Available filter with query params",
+    # Define a path parameter named "id"
+    parameters=[
+        OpenApiParameter(
+            name="email",
+            description="List of users matching the searched email. Case-insensitive",
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+        ),
+        OpenApiParameter(
+            name="posts",
+            description="List of users who have published at least the number of posts specified in the parameter.",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+        ),
+        OpenApiParameter(
+            name="followers",
+            description="List of users who have number of followers at least the number of followers specified in the parameter.",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+        ),
+        OpenApiParameter(
+            name="reacted",
+            description="List of users whose poosts have been liked os disliked at least the number times specified in the parameter.",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+        ),
+    ],
+)
 class ListUserView(generics.ListAPIView):
     serializer_class = UserListSerializer
 
