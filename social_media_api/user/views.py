@@ -21,6 +21,7 @@ from user.serializers import (
     UserListSerializer,
     UserRetrieveSerializer,
     UserCreateSerializer,
+    UserShortSerializer,
 )
 
 User = get_user_model()
@@ -100,6 +101,22 @@ class ListUserView(generics.ListAPIView):
         if reacted:
             queryset = queryset.filter(reactions__gte=reacted)
         return queryset
+
+
+class FollowingListView(generics.ListAPIView):
+    serializer_class = UserShortSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        return user.following.all()
+
+
+class FollowersListView(generics.ListAPIView):
+    serializer_class = UserShortSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        return user.followers.all()
 
 
 class RetrieveUserView(generics.RetrieveAPIView):
