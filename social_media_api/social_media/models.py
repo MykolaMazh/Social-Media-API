@@ -22,7 +22,7 @@ class Post(models.Model):
     photo = models.ImageField(
         upload_to="post_images/%Y/%m/%d/", blank=True, null=True
     )
-    views = models.IntegerField(editable=False, null=True)
+    views = models.IntegerField(editable=False, default=0)
     tags = models.ManyToManyField(Tag, blank=True)
     liked = models.ManyToManyField(
         settings.AUTH_USER_MODEL, blank=True, related_name="likes"
