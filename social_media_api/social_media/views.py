@@ -10,3 +10,6 @@ User = get_user_model()
 class PostViewSet(ModelViewSet):
     queryset = Post.objects.select_related("author").all()
     serializer_class = PostSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)

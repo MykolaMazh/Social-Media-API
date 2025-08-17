@@ -9,7 +9,7 @@ from user.serializers import UserShortSerializer
 
 
 class PostSerializer(serializers.ModelSerializer):
-    author = UserShortSerializer()
+    author = UserShortSerializer(read_only=True)
 
     class Meta:
         model = Post
