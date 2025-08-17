@@ -3,9 +3,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 
-from social_media.models import Post
-from social_media.serializers import PostSerializer
-from .permissions import IsAuthorOrReadOnly
+from social_media.models import Post, Tag
+from social_media.serializers import PostSerializer, TagSerializer
+from .permissions import IsAuthorOrReadOnly, IsAdminOrReadOnly
 
 User = get_user_model()
 
@@ -33,3 +33,9 @@ class PostViewSet(ModelViewSet):
         serializer = self.get_serializer(posts, many=True)
 
         return Response(serializer.data)
+
+
+class TagViewSet(ModelViewSet):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    permission_classes = [IsAdminOrReadOnly]
