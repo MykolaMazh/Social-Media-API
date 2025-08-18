@@ -2,6 +2,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
+from django.db.models import F
 
 from social_media.models import Post, Tag
 from social_media.serializers import PostSerializer, TagSerializer
@@ -63,7 +64,17 @@ class PostViewSet(ModelViewSet):
         request=PostSerializer(),
     )
     def list(self, request, *args, **kwargs):
-        return super().list(self, request, *args, **kwargs)
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        user = request.user
+        if user != instance.author:
+            instance.views = F("views") + 1
+            instance.save()
+            instance.refresh_from_db()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     def get_queryset(self):
         queryset = self.queryset
