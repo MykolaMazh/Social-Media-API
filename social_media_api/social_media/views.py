@@ -69,8 +69,9 @@ class PostViewSet(ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         user = request.user
-        if user != instance.author:
+        if user != instance.author and user not in instance.viewers.all():
             instance.views = F("views") + 1
+            instance.viewers.add(user)
             instance.save()
             instance.refresh_from_db()
         serializer = self.get_serializer(instance)

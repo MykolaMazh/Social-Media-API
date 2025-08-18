@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
 
+User = settings.AUTH_USER_MODEL
+
 
 class Tag(models.Model):
     title = models.CharField(max_length=50, unique=True)
@@ -12,7 +14,7 @@ class Tag(models.Model):
 class Post(models.Model):
     title = models.CharField(max_length=100)
     author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        User,
         on_delete=models.CASCADE,
         related_name="posts",
     )
@@ -23,12 +25,13 @@ class Post(models.Model):
         upload_to="post_images/%Y/%m/%d/", blank=True, null=True
     )
     views = models.IntegerField(editable=False, default=0)
-    tags = models.ManyToManyField(Tag, blank=True)
-    liked = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, blank=True, related_name="likes"
+    viewers = models.ManyToManyField(
+        User, related_name="viewed_posts", blank=True
     )
+    tags = models.ManyToManyField(Tag, blank=True)
+    liked = models.ManyToManyField(User, blank=True, related_name="likes")
     disliked = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, blank=True, related_name="dislikes"
+        User, blank=True, related_name="dislikes"
     )
 
     def like(self, user):
@@ -47,7 +50,7 @@ class Post(models.Model):
 
 class Comment(models.Model):
     author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        User,
         on_delete=models.CASCADE,
         related_name="comments",
     )
