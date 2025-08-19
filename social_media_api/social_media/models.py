@@ -34,16 +34,6 @@ class Post(models.Model):
         User, blank=True, related_name="dislikes"
     )
 
-    def like(self, user):
-        """Add user to liked, remove from disliked."""
-        self.disliked.remove(user)
-        self.liked.add(user)
-
-    def dislike(self, user):
-        """Add user to disliked, remove from liked."""
-        self.liked.remove(user)
-        self.disliked.add(user)
-
     def __str__(self) -> str:
         return f"{self.title}/{self.author}"
 

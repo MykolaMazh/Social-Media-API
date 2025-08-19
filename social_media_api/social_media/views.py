@@ -49,11 +49,16 @@ class PostViewSet(ModelViewSet):
     def _handle_reaction(self, request, action_type: str):
         user = request.user
         post = self.get_object()
-
+        like_exists = post.liked.filter(id=user.id).exists()
+        dislike_exists = post.disliked.filter(id=user.id).exists()
         if action_type == "like":
-            post.like(user)
+            if dislike_exists:
+                post.disliked.remove(user)
+            post.liked.add(user)
         elif action_type == "dislike":
-            post.dislike(user)
+            if like_exists:
+                post.liked.remove(user)
+            post.disliked.add(user)
 
         return Response(
             {
@@ -70,7 +75,7 @@ class PostViewSet(ModelViewSet):
         methods=["patch"],
         permission_classes=[IsAuthenticatedAndNotAuthor],
     )
-    def like(self, request, pk=None):
+    def like(self, request, pk):
         return self._handle_reaction(request, "like")
 
     @action(
@@ -78,7 +83,7 @@ class PostViewSet(ModelViewSet):
         methods=["patch"],
         permission_classes=[IsAuthenticatedAndNotAuthor],
     )
-    def dislike(self, request, pk=None):
+    def dislike(self, request, pk):
         return self._handle_reaction(request, "dislike")
 
     @extend_schema(
