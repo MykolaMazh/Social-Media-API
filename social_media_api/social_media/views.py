@@ -1,3 +1,4 @@
+from django.db.models.aggregates import Count
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
@@ -24,7 +25,11 @@ User = get_user_model()
 
 
 class PostViewSet(ModelViewSet):
-    queryset = Post.objects.select_related("author").prefetch_related("tags")
+    queryset = (
+        Post.objects.select_related("author")
+        .prefetch_related("tags")
+        .annotate(likes=Count("liked"), dislikes=Count("disliked"))
+    )
     serializer_class = PostSerializer
     permission_classes = [IsAuthorOrReadOnly]
 
@@ -46,24 +51,30 @@ class PostViewSet(ModelViewSet):
 
         return Response(serializer.data)
 
-    def _handle_reaction(self, request, action_type: str):
+    def _handle_reaction(self, request, action_type: str, undo: bool = False):
         user = request.user
         post = self.get_object()
         like_exists = post.liked.filter(id=user.id).exists()
         dislike_exists = post.disliked.filter(id=user.id).exists()
         if action_type == "like":
-            if dislike_exists:
-                post.disliked.remove(user)
-            post.liked.add(user)
-        elif action_type == "dislike":
-            if like_exists:
+            if undo and like_exists:
                 post.liked.remove(user)
-            post.disliked.add(user)
-
+            else:
+                if dislike_exists:
+                    post.disliked.remove(user)
+                post.liked.add(user)
+        elif action_type == "dislike":
+            if undo and dislike_exists:
+                post.disliked.remove(user)
+            else:
+                if like_exists:
+                    post.liked.remove(user)
+                post.disliked.add(user)
+        action_verb = action_type if not undo else f"do not {action_type}"
         return Response(
             {
                 "message": (
-                    f'You {action_type}d "{post.title}" by {post.author} '
+                    f'You {action_verb} "{post.title}" by {post.author} '
                     f'from {post.created_at.strftime("%A %d %b %Y %H:%M:%S")}'
                 )
             },
@@ -83,8 +94,24 @@ class PostViewSet(ModelViewSet):
         methods=["patch"],
         permission_classes=[IsAuthenticatedAndNotAuthor],
     )
+    def like_remove(self, request, pk):
+        return self._handle_reaction(request, "like", undo=True)
+
+    @action(
+        detail=True,
+        methods=["patch"],
+        permission_classes=[IsAuthenticatedAndNotAuthor],
+    )
     def dislike(self, request, pk):
         return self._handle_reaction(request, "dislike")
+
+    @action(
+        detail=True,
+        methods=["patch"],
+        permission_classes=[IsAuthenticatedAndNotAuthor],
+    )
+    def dislike_remove(self, request, pk):
+        return self._handle_reaction(request, "dislike", undo=True)
 
     @extend_schema(
         summary="Post list",
