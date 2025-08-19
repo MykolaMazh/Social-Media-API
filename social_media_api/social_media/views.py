@@ -7,7 +7,11 @@ from django.db.models import F
 
 from social_media.models import Post, Tag
 from social_media.serializers import PostSerializer, TagSerializer
-from .permissions import IsAuthorOrReadOnly, IsAdminOrReadOnly
+from .permissions import (
+    IsAuthorOrReadOnly,
+    IsAdminOrReadOnly,
+    IsAuthenticatedAndNotAuthor,
+)
 from drf_spectacular.utils import (
     extend_schema,
     OpenApiParameter,
@@ -36,19 +40,20 @@ class PostViewSet(ModelViewSet):
     @action(
         detail=True,
         methods=["patch"],
+        permission_classes=[
+            IsAuthenticatedAndNotAuthor,
+        ],
     )
     def like(self, request, pk=None):
         user = self.request.user
         post = self.get_object()
         post.like(user)
-        post.save()
-        post.refresh_from_db()
         return Response(
-            {
-                "status": f"{status.HTTP_200_OK}",
+        {
                 "message": f"You liked {post.title} by {post.author} from {post.created_at}",
-            }
-        )
+            },
+        status= status.HTTP_200_OK
+        ),
 
     @action(detail=False, methods=["get"])
     def following(self, request):
