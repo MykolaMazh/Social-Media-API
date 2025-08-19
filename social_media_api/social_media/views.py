@@ -1,3 +1,4 @@
+from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -30,8 +31,24 @@ class PostViewSet(ModelViewSet):
     def mine(self, request):
         posts = self.get_queryset().filter(author=self.request.user)
         serializer = self.get_serializer(posts, many=True)
-
         return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=["patch"],
+    )
+    def like(self, request, pk=None):
+        user = self.request.user
+        post = self.get_object()
+        post.like(user)
+        post.save()
+        post.refresh_from_db()
+        return Response(
+            {
+                "status": f"{status.HTTP_200_OK}",
+                "message": f"You liked {post.title} by {post.author} from {post.created_at}",
+            }
+        )
 
     @action(detail=False, methods=["get"])
     def following(self, request):
