@@ -37,24 +37,6 @@ class PostViewSet(ModelViewSet):
         serializer = self.get_serializer(posts, many=True)
         return Response(serializer.data)
 
-    @action(
-        detail=True,
-        methods=["patch"],
-        permission_classes=[
-            IsAuthenticatedAndNotAuthor,
-        ],
-    )
-    def like(self, request, pk=None):
-        user = self.request.user
-        post = self.get_object()
-        post.like(user)
-        return Response(
-            {
-                "message": f'You liked "{post.title}" by {post.author} from {post.created_at.strftime("%d %b %Y %H:%M:%S")}',
-            },
-            status=status.HTTP_200_OK,
-        )
-
     @action(detail=False, methods=["get"])
     def following(self, request):
         user = self.request.user
@@ -63,6 +45,41 @@ class PostViewSet(ModelViewSet):
         serializer = self.get_serializer(posts, many=True)
 
         return Response(serializer.data)
+
+    def _handle_reaction(self, request, action_type: str):
+        user = request.user
+        post = self.get_object()
+
+        if action_type == "like":
+            post.like(user)
+        elif action_type == "dislike":
+            post.dislike(user)
+
+        return Response(
+            {
+                "message": (
+                    f'You {action_type}d "{post.title}" by {post.author} '
+                    f'from {post.created_at.strftime("%A %d %b %Y %H:%M:%S")}'
+                )
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(
+        detail=True,
+        methods=["patch"],
+        permission_classes=[IsAuthenticatedAndNotAuthor],
+    )
+    def like(self, request, pk=None):
+        return self._handle_reaction(request, "like")
+
+    @action(
+        detail=True,
+        methods=["patch"],
+        permission_classes=[IsAuthenticatedAndNotAuthor],
+    )
+    def dislike(self, request, pk=None):
+        return self._handle_reaction(request, "dislike")
 
     @extend_schema(
         summary="Post list",
