@@ -49,11 +49,11 @@ class PostViewSet(ModelViewSet):
         post = self.get_object()
         post.like(user)
         return Response(
-        {
-                "message": f"You liked {post.title} by {post.author} from {post.created_at}",
+            {
+                "message": f'You liked "{post.title}" by {post.author} from {post.created_at.strftime("%d %b %Y %H:%M:%S")}',
             },
-        status= status.HTTP_200_OK
-        ),
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["get"])
     def following(self, request):
