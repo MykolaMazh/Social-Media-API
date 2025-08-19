@@ -16,10 +16,22 @@ class TagSerializer(serializers.ModelSerializer):
 
 class PostSerializer(serializers.ModelSerializer):
     author = UserShortSerializer(read_only=True)
+    likes = serializers.IntegerField(read_only=True)
+    dislikes = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Post
-        fields = ["id", "title", "author", "content", "photo", "tags", "views"]
+        fields = [
+            "id",
+            "title",
+            "author",
+            "content",
+            "photo",
+            "tags",
+            "views",
+            "likes",
+            "dislikes",
+        ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
