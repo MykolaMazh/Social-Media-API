@@ -39,7 +39,7 @@ class PostSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and request.method in ["POST", "PUT", "PATCH"]:
             self.fields["tags"] = serializers.PrimaryKeyRelatedField(
-                many=True, queryset=Tag.objects.all()
+                many=True, queryset=Tag.objects.all(), required=False
             )
         else:
             self.fields["tags"] = TagSerializer(many=True, read_only=True)
