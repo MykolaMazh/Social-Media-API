@@ -111,3 +111,34 @@ class PostApiTests(APITestCase):
             status.HTTP_401_UNAUTHORIZED,
             msg="An unauthenticated user shouldn’t be able to retrieve",
         )
+
+    def test_staff_can_delete_posts(self):
+        payload = {
+            "title": "Test post.",
+            "content": "This is my test post.",
+        }
+
+        self.client.post(POST_URL_LIST, payload)
+        post = Post.objects.filter(author=self.user).first()
+
+        staff_user = User.objects.create_user(
+            email="staff@example.com", password="staffuser", is_staff=True
+        )
+
+        self.client.force_authenticate(user=staff_user)
+
+        res = self.client.patch(
+            f"{POST_URL_LIST}{post.id}/", {"title": "Title edited"}
+        )
+        self.assertEqual(
+            res.status_code,
+            status.HTTP_403_FORBIDDEN,
+            msg="Only author can edit the post",
+        )
+
+        res = self.client.delete(f"{POST_URL_LIST}{post.id}/")
+        self.assertEqual(
+            res.status_code,
+            status.HTTP_204_NO_CONTENT,
+            msg="Staff should be able to delete any post.",
+        )
