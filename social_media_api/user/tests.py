@@ -4,12 +4,15 @@ from rest_framework.test import APITestCase
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 
+from social_media.models import Post
+
 User = get_user_model()
 
 
 REGISTER_URL = reverse("user:register_user")
 ME_URL = reverse("user:me")
 USERS_URL = reverse("user:users")
+POST_URL_LIST = reverse("social_media:post-list")
 
 
 class UserApiTests(APITestCase):
@@ -73,46 +76,38 @@ class PostApiTests(APITestCase):
             email="test@example.com",
             password="testpass123",
         )
+        self.client.force_authenticate(self.user)
 
-    def test_register_user(self):
+    def test_user_posts_access(self):
         payload = {
-            "email": "newuser@example.com",
-            "password": "newpass123",
-            "about_me": "Hello",
+            "title": "Test post.",
+            "content": "This is my test post.",
         }
-        res = self.client.post(REGISTER_URL, payload)
+
+        res = self.client.post(POST_URL_LIST, payload)
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-        user_exists = User.objects.filter(email=payload["email"]).exists()
-        self.assertTrue(user_exists)
+        post = Post.objects.filter(author=self.user).first()
+        self.assertIsNotNone(post, msg="The post should have been created")
 
-    def test_update_current_user(self):
-        user1 = User.objects.create_user(
-            email="test11@example.com",
-            password="testpass123",
-        )
-        user2 = User.objects.create_user(
-            email="test2@example.com",
-            password="testpass1234",
-        )
-        self.client.force_authenticate(self.user)
-        payload = {
-            "about_me": "Updated about me",
-            "following": [user1.pk, user2.pk],
-        }
-        res = self.client.patch(ME_URL, payload)
-        self.user.refresh_from_db()
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(self.user.about_me, payload["about_me"])
-        following_users = self.user.following.all()
-        self.assertTrue(
-            all(user in following_users for user in [user1, user2])
+        self.client.force_authenticate(user=None)
+
+        res = self.client.post(POST_URL_LIST, payload)
+        self.assertEqual(
+            res.status_code,
+            status.HTTP_401_UNAUTHORIZED,
+            msg="An unauthenticated user can't create",
         )
 
-    def test_no_way_update_email(self):
-        self.client.force_authenticate(self.user)
-        payload = {
-            "email": "new_email@gmail.com",
-        }
-        res = self.client.patch(ME_URL, payload)
-        self.user.refresh_from_db()
-        self.assertNotEqual(self.user.email, payload["email"])
+        res = self.client.get(POST_URL_LIST)
+        self.assertEqual(
+            res.status_code,
+            status.HTTP_200_OK,
+            msg="An unauthenticated user should be able to list",
+        )
+
+        res = self.client.get(f"{POST_URL_LIST}{post.id}/")
+        self.assertEqual(
+            res.status_code,
+            status.HTTP_401_UNAUTHORIZED,
+            msg="An unauthenticated user shouldn’t be able to retrieve",
+        )
