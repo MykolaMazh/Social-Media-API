@@ -1,10 +1,12 @@
 from django.db.models.aggregates import Count
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.db.models import F
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 from social_media.models import Post, Tag
 from social_media.serializers import PostSerializer, TagSerializer
@@ -12,13 +14,6 @@ from .permissions import (
     IsAuthorOrReadOnly,
     IsAdminOrReadOnly,
     IsAuthenticatedAndNotAuthor,
-)
-from drf_spectacular.utils import (
-    extend_schema,
-    OpenApiParameter,
-    OpenApiTypes,
-    OpenApiResponse,
-    OpenApiExample,
 )
 
 User = get_user_model()
@@ -119,6 +114,16 @@ class PostViewSet(ModelViewSet):
     )
     def dislike_remove(self, request, pk):
         return self._handle_reaction(request, "dislike", undo=True)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAuthenticated],
+    )
+    def liked(self, request):
+        posts = self.get_queryset().filter(liked=request.user)
+        serializer = self.get_serializer(posts, many=True)
+        return Response(serializer.data)
 
     @extend_schema(
         summary="Post list",

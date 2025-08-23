@@ -13,6 +13,8 @@ REGISTER_URL = reverse("user:register_user")
 ME_URL = reverse("user:me")
 USERS_URL = reverse("user:users")
 POST_URL_LIST = reverse("social_media:post-list")
+POST_LIKE_URL_NAME = "social_media:post-like"
+POST_DISLIKE_URL_NAME = "social_media:post-dislike"
 
 
 class UserApiTests(APITestCase):
@@ -72,11 +74,7 @@ class PostApiTests(APITestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.user = User.objects.create_user(
-            email="test@example.com",
-            password="testpass123",
-        )
-        self.client.force_authenticate(self.user)
+        self.create_user("user0")
 
     def create_post(self):
         payload = {
@@ -85,10 +83,12 @@ class PostApiTests(APITestCase):
         }
 
         self.res = self.client.post(POST_URL_LIST, payload)
-        self.post = Post.objects.first()
+        self.post = Post.objects.order_by("id").last()
         self.post_url_detail = reverse(
             "social_media:post-detail", args=[self.post.id]
         )
+        self.post.refresh_from_db()
+        return self.post
 
     def create_user(self, user: str, **kwargs):
         new_user = User.objects.create_user(
@@ -157,7 +157,7 @@ class PostApiTests(APITestCase):
     def test_no_like_own_post(self):
         self.create_post()
         res = self.client.patch(
-            reverse("social_media:post-like", kwargs={"pk": self.post.pk})
+            reverse(POST_LIKE_URL_NAME, kwargs={"pk": self.post.pk})
         )
         self.assertEqual(
             res.status_code,
@@ -169,14 +169,10 @@ class PostApiTests(APITestCase):
         self.create_post()
 
         self.create_user("user1")
-        self.client.patch(
-            reverse("social_media:post-like", args=[self.post.pk])
-        )
+        self.client.patch(reverse(POST_LIKE_URL_NAME, args=[self.post.pk]))
 
         self.create_user("user2")
-        self.client.patch(
-            reverse("social_media:post-like", args=[self.post.pk])
-        )
+        self.client.patch(reverse(POST_LIKE_URL_NAME, args=[self.post.pk]))
         self.client.patch(
             reverse("social_media:post-unlike", args=[self.post.pk])
         )
@@ -189,14 +185,10 @@ class PostApiTests(APITestCase):
         self.create_post()
 
         self.create_user("user1")
-        self.client.patch(
-            reverse("social_media:post-dislike", args=[self.post.pk])
-        )
+        self.client.patch(reverse(POST_DISLIKE_URL_NAME, args=[self.post.pk]))
 
         self.create_user("user2")
-        self.client.patch(
-            reverse("social_media:post-dislike", args=[self.post.pk])
-        )
+        self.client.patch(reverse(POST_DISLIKE_URL_NAME, args=[self.post.pk]))
         self.client.patch(
             reverse("social_media:post-undislike", args=[self.post.pk])
         )
@@ -207,20 +199,25 @@ class PostApiTests(APITestCase):
 
     def test_dislike_like_mutually_exclusive(self):
         self.create_post()
-        self.create_user("user")
-        self.client.patch(
-            reverse("social_media:post-like", args=[self.post.pk])
-        )
-        self.client.patch(
-            reverse("social_media:post-dislike", args=[self.post.pk])
-        )
+        self.create_user("user1")
+        self.client.patch(reverse(POST_LIKE_URL_NAME, args=[self.post.pk]))
+        self.client.patch(reverse(POST_DISLIKE_URL_NAME, args=[self.post.pk]))
         likes = self.post.liked.count()
         dislikes = self.post.disliked.count()
         self.assertEqual((likes, dislikes), (0, 1))
-        self.client.patch(
-            reverse("social_media:post-like", args=[self.post.pk])
-        )
+        self.client.patch(reverse(POST_LIKE_URL_NAME, args=[self.post.pk]))
         self.post.refresh_from_db()
         likes = self.post.liked.count()
         dislikes = self.post.disliked.count()
         self.assertEqual((likes, dislikes), (1, 0))
+
+    def test_liked_post_list(self):
+        post1 = self.create_post()
+        post2 = self.create_post()
+        post3 = self.create_post()
+        self.create_user("user1")
+        self.client.patch(reverse(POST_LIKE_URL_NAME, args=[post1.pk]))
+        self.client.patch(reverse(POST_LIKE_URL_NAME, args=[post3.pk]))
+        res = self.client.get(reverse("social_media:post-liked"))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 2)

@@ -44,7 +44,6 @@ class Comment(models.Model):
         on_delete=models.CASCADE,
         related_name="comments",
     )
-    commented_date = models.DateTimeField(auto_now_add=True)
     content = models.TextField()
     post = models.ForeignKey(
         Post, on_delete=models.CASCADE, related_name="comments"
@@ -52,4 +51,4 @@ class Comment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
-        return str(self.author)
+        return str(self.post)
