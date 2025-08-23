@@ -78,20 +78,41 @@ class PostApiTests(APITestCase):
         )
         self.client.force_authenticate(self.user)
 
-    def test_user_posts_access(self):
+    def create_post(self):
         payload = {
             "title": "Test post.",
             "content": "This is my test post.",
         }
 
-        res = self.client.post(POST_URL_LIST, payload)
-        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-        post = Post.objects.filter(author=self.user).first()
-        self.assertIsNotNone(post, msg="The post should have been created")
+        self.res = self.client.post(POST_URL_LIST, payload)
+        self.post = Post.objects.first()
+        self.post_url_detail = reverse(
+            "social_media:post-detail", args=[self.post.id]
+        )
+
+    def create_user(self, user: str, **kwargs):
+        new_user = User.objects.create_user(
+            email=f"{user}@example.com", password=f"{user}test", **kwargs
+        )
+        self.client.force_authenticate(new_user)
+        return new_user
+
+    def test_user_posts_access(self):
+        self.create_post()
+        self.assertEqual(self.res.status_code, status.HTTP_201_CREATED)
+        self.assertIsNotNone(
+            self.post, msg="The post should have been created"
+        )
 
         self.client.force_authenticate(user=None)
 
-        res = self.client.post(POST_URL_LIST, payload)
+        res = self.client.post(
+            POST_URL_LIST,
+            {
+                "title": "Non User Post.",
+                "content": "Post of unauthorized user.",
+            },
+        )
         self.assertEqual(
             res.status_code,
             status.HTTP_401_UNAUTHORIZED,
@@ -105,7 +126,7 @@ class PostApiTests(APITestCase):
             msg="An unauthenticated user should be able to list",
         )
 
-        res = self.client.get(f"{POST_URL_LIST}{post.id}/")
+        res = self.client.get(self.post_url_detail)
         self.assertEqual(
             res.status_code,
             status.HTTP_401_UNAUTHORIZED,
@@ -113,22 +134,12 @@ class PostApiTests(APITestCase):
         )
 
     def test_staff_can_delete_posts(self):
-        payload = {
-            "title": "Test post.",
-            "content": "This is my test post.",
-        }
-
-        self.client.post(POST_URL_LIST, payload)
-        post = Post.objects.filter(author=self.user).first()
-
-        staff_user = User.objects.create_user(
-            email="staff@example.com", password="staffuser", is_staff=True
-        )
-
-        self.client.force_authenticate(user=staff_user)
+        self.create_post()
+        staff_user = self.create_user("staffuser", is_staff=True)
 
         res = self.client.patch(
-            f"{POST_URL_LIST}{post.id}/", {"title": "Title edited"}
+            self.post_url_detail,
+            {"title": "Title edited"},
         )
         self.assertEqual(
             res.status_code,
@@ -136,9 +147,80 @@ class PostApiTests(APITestCase):
             msg="Only author can edit the post",
         )
 
-        res = self.client.delete(f"{POST_URL_LIST}{post.id}/")
+        res = self.client.delete(self.post_url_detail)
         self.assertEqual(
             res.status_code,
             status.HTTP_204_NO_CONTENT,
             msg="Staff should be able to delete any post.",
         )
+
+    def test_no_like_own_post(self):
+        self.create_post()
+        res = self.client.patch(
+            reverse("social_media:post-like", kwargs={"pk": self.post.pk})
+        )
+        self.assertEqual(
+            res.status_code,
+            status.HTTP_403_FORBIDDEN,
+            msg="The author can’t like their own posts.",
+        )
+
+    def test_add_remove_likes(self):
+        self.create_post()
+
+        self.create_user("user1")
+        self.client.patch(
+            reverse("social_media:post-like", args=[self.post.pk])
+        )
+
+        self.create_user("user2")
+        self.client.patch(
+            reverse("social_media:post-like", args=[self.post.pk])
+        )
+        self.client.patch(
+            reverse("social_media:post-unlike", args=[self.post.pk])
+        )
+
+        self.post.refresh_from_db()
+        likes = self.post.liked.count()
+        self.assertEqual(likes, 1)
+
+    def test_add_remove_dislikes(self):
+        self.create_post()
+
+        self.create_user("user1")
+        self.client.patch(
+            reverse("social_media:post-dislike", args=[self.post.pk])
+        )
+
+        self.create_user("user2")
+        self.client.patch(
+            reverse("social_media:post-dislike", args=[self.post.pk])
+        )
+        self.client.patch(
+            reverse("social_media:post-undislike", args=[self.post.pk])
+        )
+
+        self.post.refresh_from_db()
+        dislikes = self.post.disliked.count()
+        self.assertEqual(dislikes, 1)
+
+    def test_dislike_like_mutually_exclusive(self):
+        self.create_post()
+        self.create_user("user")
+        self.client.patch(
+            reverse("social_media:post-like", args=[self.post.pk])
+        )
+        self.client.patch(
+            reverse("social_media:post-dislike", args=[self.post.pk])
+        )
+        likes = self.post.liked.count()
+        dislikes = self.post.disliked.count()
+        self.assertEqual((likes, dislikes), (0, 1))
+        self.client.patch(
+            reverse("social_media:post-like", args=[self.post.pk])
+        )
+        self.post.refresh_from_db()
+        likes = self.post.liked.count()
+        dislikes = self.post.disliked.count()
+        self.assertEqual((likes, dislikes), (1, 0))

@@ -54,6 +54,11 @@ class PostViewSet(ModelViewSet):
     def _handle_reaction(self, request, action_type: str, undo: bool = False):
         user = request.user
         post = self.get_object()
+        if post.author == user:
+            return Response(
+                {"error": "You cannot react to your own post."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         like_exists = post.liked.filter(id=user.id).exists()
         dislike_exists = post.disliked.filter(id=user.id).exists()
         if action_type == "like":
@@ -92,6 +97,7 @@ class PostViewSet(ModelViewSet):
     @action(
         detail=True,
         methods=["patch"],
+        url_name="unlike",
         permission_classes=[IsAuthenticatedAndNotAuthor],
     )
     def like_remove(self, request, pk):
@@ -109,6 +115,7 @@ class PostViewSet(ModelViewSet):
         detail=True,
         methods=["patch"],
         permission_classes=[IsAuthenticatedAndNotAuthor],
+        url_name="undislike",
     )
     def dislike_remove(self, request, pk):
         return self._handle_reaction(request, "dislike", undo=True)
