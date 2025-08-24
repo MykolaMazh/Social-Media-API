@@ -4,7 +4,7 @@ from rest_framework.test import APITestCase
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 
-from social_media.models import Post
+from social_media.models import Post, Comment
 
 User = get_user_model()
 
@@ -221,3 +221,48 @@ class PostApiTests(APITestCase):
         res = self.client.get(reverse("social_media:post-liked"))
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data), 2)
+
+
+COMMENT_LIST_URL = reverse("social_media:comment-list")
+COMMENT_DETAIL_URL_NAME = "social_media:comment-detail"
+
+
+class CommentApiTests(APITestCase):
+
+    def test_only_own_comment_access(self):
+        client = APIClient()
+        user1 = User.objects.create_user(
+            email="user1@gmail.com", password="user1password"
+        )
+        user2 = User.objects.create_user(
+            email="user2@gmail.com", password="user2password"
+        )
+        payload = {
+            "title": "test post",
+            "content": "No user can edit other users’ comments.",
+        }
+        client.force_authenticate(user1)
+        client.post(POST_URL_LIST, data=payload)
+        post = Post.objects.first()
+
+        client.force_authenticate(user2)
+        res = client.post(
+            COMMENT_LIST_URL,
+            data={"content": "I fully agree.", "post": post.id},
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        edited_content = "Awful post."
+        client.patch(
+            reverse(COMMENT_DETAIL_URL_NAME, kwargs={"pk": post.id}),
+            data={"content": edited_content},
+        )
+        comment = Comment.objects.first()
+        self.assertEqual(comment.content, edited_content)
+
+        client.force_authenticate(user1)
+        res = client.patch(
+            reverse(COMMENT_DETAIL_URL_NAME, kwargs={"pk": post.id}),
+            data={"content": "Great!!!"},
+        )
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
