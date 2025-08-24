@@ -8,8 +8,12 @@ from django.contrib.auth import get_user_model
 from django.db.models import F
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
-from social_media.models import Post, Tag
-from social_media.serializers import PostSerializer, TagSerializer
+from social_media.models import Post, Tag, Comment
+from social_media.serializers import (
+    PostSerializer,
+    TagSerializer,
+    CommentSerializer,
+)
 from .permissions import (
     IsAuthorOrReadOnly,
     IsAdminOrReadOnly,
@@ -176,3 +180,12 @@ class TagViewSet(ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = [IsAdminOrReadOnly]
+
+
+class CommentViewSet(ModelViewSet):
+    queryset = Comment.objects.select_related("author", "post", "post__author")
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthorOrReadOnly]
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
