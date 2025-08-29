@@ -13,6 +13,7 @@ from social_media.serializers import (
     PostSerializer,
     TagSerializer,
     CommentSerializer,
+    PostRetrieveSerializer,
 )
 from .permissions import (
     IsAuthorOrReadOnly,
@@ -26,8 +27,12 @@ User = get_user_model()
 class PostViewSet(ModelViewSet):
     queryset = (
         Post.objects.select_related("author")
-        .prefetch_related("tags")
-        .annotate(likes=Count("liked"), dislikes=Count("disliked"))
+        .prefetch_related("tags", "comments__author")
+        .annotate(
+            likes=Count("liked"),
+            dislikes=Count("disliked"),
+            comments_number=Count("comments"),
+        )
     )
     serializer_class = PostSerializer
     permission_classes = [IsAuthorOrReadOnly]
@@ -173,7 +178,13 @@ class PostViewSet(ModelViewSet):
             queryset = queryset.filter(tags__title__in=tags).distinct()
         if author:
             queryset = queryset.filter(author__email__icontains=author)
+
         return queryset
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return PostRetrieveSerializer
+        return PostSerializer
 
 
 class TagViewSet(ModelViewSet):

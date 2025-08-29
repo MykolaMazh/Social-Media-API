@@ -18,6 +18,7 @@ class PostSerializer(serializers.ModelSerializer):
     author = UserShortSerializer(read_only=True)
     likes = serializers.IntegerField(read_only=True)
     dislikes = serializers.IntegerField(read_only=True)
+    comments_number = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Post
@@ -31,6 +32,7 @@ class PostSerializer(serializers.ModelSerializer):
             "views",
             "likes",
             "dislikes",
+            "comments_number",
         ]
 
     def __init__(self, *args, **kwargs):
@@ -46,8 +48,6 @@ class PostSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    author = serializers.StringRelatedField()
-    post = serializers.SlugRelatedField(slug_field="title", read_only=True)
 
     class Meta:
         model = Comment
@@ -67,3 +67,41 @@ class CommentSerializer(serializers.ModelSerializer):
             self.fields["post"] = serializers.PrimaryKeyRelatedField(
                 queryset=Post.objects.all()
             )
+
+
+class CommentPostRetrieveSerializer(CommentSerializer):
+    author = UserShortSerializer()
+
+    class Meta:
+        model = Comment
+        fields = [
+            "id",
+            "author",
+            "content",
+            "created_at",
+        ]
+
+    def __init__(self, *args, **kwargs):
+        serializers.ModelSerializer.__init__(self, *args, **kwargs)
+
+
+class PostRetrieveSerializer(serializers.ModelSerializer):
+    author = UserShortSerializer(read_only=True)
+    likes = serializers.IntegerField(read_only=True)
+    dislikes = serializers.IntegerField(read_only=True)
+    comments_list = CommentPostRetrieveSerializer(source="comments", many=True)
+
+    class Meta:
+        model = Post
+        fields = [
+            "id",
+            "title",
+            "author",
+            "content",
+            "photo",
+            "tags",
+            "views",
+            "likes",
+            "dislikes",
+            "comments_list",
+        ]
