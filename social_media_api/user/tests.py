@@ -15,6 +15,7 @@ USERS_URL = reverse("user:users")
 POST_URL_LIST = reverse("social_media:post-list")
 POST_LIKE_URL_NAME = "social_media:post-like"
 POST_DISLIKE_URL_NAME = "social_media:post-dislike"
+POST_COMMENT_URL_NAME = "social_media:post-comment"
 
 
 class UserApiTests(APITestCase):
@@ -228,44 +229,56 @@ COMMENT_DETAIL_URL_NAME = "social_media:comment-detail"
 
 
 class CommentApiTests(APITestCase):
-
-    def test_only_own_comment_access(self):
-        client = APIClient()
-        user1 = User.objects.create_user(
+    def setUp(self):
+        self.client = APIClient()
+        self.user1 = User.objects.create_user(
             email="user1@gmail.com", password="user1password"
         )
-        user2 = User.objects.create_user(
+        self.user2 = User.objects.create_user(
             email="user2@gmail.com", password="user2password"
         )
         payload = {
             "title": "test post",
-            "content": "No user can edit other users’ comments.",
+            "content": "Test post content.",
         }
-        client.force_authenticate(user1)
-        client.post(POST_URL_LIST, data=payload)
-        post = Post.objects.first()
+        self.client.force_authenticate(self.user1)
+        self.client.post(POST_URL_LIST, data=payload)
+        self.post = Post.objects.first()
 
-        client.force_authenticate(user2)
-        res = client.post(
+    def test_only_own_comment_access(self):
+
+        self.client.force_authenticate(self.user2)
+        res = self.client.post(
             COMMENT_LIST_URL,
-            data={"content": "I fully agree.", "post": post.id},
+            data={"content": "I fully agree.", "post": self.post.id},
         )
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 
         edited_content = "Awful post."
-        client.patch(
-            reverse(COMMENT_DETAIL_URL_NAME, kwargs={"pk": post.id}),
+        self.client.patch(
+            reverse(COMMENT_DETAIL_URL_NAME, kwargs={"pk": self.post.id}),
             data={"content": edited_content},
         )
         comment = Comment.objects.first()
         self.assertEqual(comment.content, edited_content)
 
-        client.force_authenticate(user1)
+        self.client.force_authenticate(self.user1)
         edited_content_2 = "Great!!!"
-        res = client.patch(
-            reverse(COMMENT_DETAIL_URL_NAME, kwargs={"pk": post.id}),
+        res = self.client.patch(
+            reverse(COMMENT_DETAIL_URL_NAME, kwargs={"pk": self.post.id}),
             data={"content": edited_content_2},
         )
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
         comment.refresh_from_db()
         self.assertNotEqual(comment.content, edited_content_2)
+
+    def test_can_comment_with_action(self):
+        self.client.force_authenticate(self.user2)
+        comment_content = "New comment"
+        res = self.client.post(
+            reverse(POST_COMMENT_URL_NAME, args=[self.post.id]),
+            data={"content": comment_content, "post": self.post.id},
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        comment = Comment.objects.first()
+        self.assertEqual(comment.content, comment_content)
