@@ -261,8 +261,11 @@ class CommentApiTests(APITestCase):
         self.assertEqual(comment.content, edited_content)
 
         client.force_authenticate(user1)
+        edited_content_2 = "Great!!!"
         res = client.patch(
             reverse(COMMENT_DETAIL_URL_NAME, kwargs={"pk": post.id}),
-            data={"content": "Great!!!"},
+            data={"content": edited_content_2},
         )
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        comment.refresh_from_db()
+        self.assertNotEqual(comment.content, edited_content_2)

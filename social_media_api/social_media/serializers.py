@@ -48,6 +48,11 @@ class PostSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    author = serializers.StringRelatedField()
+    post_title = serializers.SlugRelatedField(
+        source="post", slug_field="title", read_only=True
+    )
+    post_id = serializers.IntegerField(source="post.id", read_only=True)
 
     class Meta:
         model = Comment
@@ -55,7 +60,8 @@ class CommentSerializer(serializers.ModelSerializer):
             "id",
             "author",
             "content",
-            "post",
+            "post_id",
+            "post_title",
             "created_at",
         ]
 
