@@ -12,7 +12,7 @@ User = get_user_model()
 REGISTER_URL = reverse("user:register_user")
 ME_URL = reverse("user:me")
 USERS_URL = reverse("user:users")
-POST_URL_LIST = reverse("social_media:post-list")
+POST_LIST_URL = reverse("social_media:post-list")
 POST_LIKE_URL_NAME = "social_media:post-like"
 POST_DISLIKE_URL_NAME = "social_media:post-dislike"
 POST_COMMENT_URL_NAME = "social_media:post-comment"
@@ -83,7 +83,7 @@ class PostApiTests(APITestCase):
             "content": "This is my test post.",
         }
 
-        self.res = self.client.post(POST_URL_LIST, payload)
+        self.res = self.client.post(POST_LIST_URL, payload)
         self.post = Post.objects.order_by("id").last()
         self.post_url_detail = reverse(
             "social_media:post-detail", args=[self.post.id]
@@ -108,7 +108,7 @@ class PostApiTests(APITestCase):
         self.client.force_authenticate(user=None)
 
         res = self.client.post(
-            POST_URL_LIST,
+            POST_LIST_URL,
             {
                 "title": "Non User Post.",
                 "content": "Post of unauthorized user.",
@@ -120,7 +120,7 @@ class PostApiTests(APITestCase):
             msg="An unauthenticated user can't create",
         )
 
-        res = self.client.get(POST_URL_LIST)
+        res = self.client.get(POST_LIST_URL)
         self.assertEqual(
             res.status_code,
             status.HTTP_200_OK,
@@ -242,7 +242,7 @@ class CommentApiTests(APITestCase):
             "content": "Test post content.",
         }
         self.client.force_authenticate(self.user1)
-        self.client.post(POST_URL_LIST, data=payload)
+        self.client.post(POST_LIST_URL, data=payload)
         self.post = Post.objects.first()
 
     def test_only_own_comment_access(self):
