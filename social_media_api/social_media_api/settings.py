@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "user.apps.UserConfig",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "django_celery_beat",
 ]
 
 MIDDLEWARE = [
@@ -159,4 +160,19 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "UTC"
+
+CELERY_BEAT_SCHEDULE = {
+    # 1️⃣ Fetch latest posts every 10 minutes
+    "fetch_posts_every_10_min": {
+        "task": "social_media.tasks.post_post",
+        "schedule": timedelta(seconds=10),
+    },
 }

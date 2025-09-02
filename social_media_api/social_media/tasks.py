@@ -8,6 +8,5 @@ POST_LIST_URL = reverse("social_media:post-list")
 
 @shared_task
 def post_post():
-    print(POST_LIST_URL)
     response = requests.get(f"{BASE_URL}{POST_LIST_URL}")
     return response.content
