@@ -33,6 +33,8 @@ class Post(models.Model):
     disliked = models.ManyToManyField(
         User, blank=True, related_name="dislikes"
     )
+    is_published = models.BooleanField(default=False)
+    publish_at = models.DateTimeField(blank=True, null=True)
 
     def __str__(self) -> str:
         return self.title

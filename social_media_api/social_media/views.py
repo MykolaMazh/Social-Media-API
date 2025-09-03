@@ -9,6 +9,7 @@ from django.db.models import F
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 from social_media.models import Post, Tag, Comment
+from social_media.tasks import post_publish
 from social_media.serializers import (
     PostSerializer,
     TagSerializer,
@@ -39,6 +40,11 @@ class PostViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+        # if post.publish_at:
+        #     post_publish.apply_async(eta=post.publish_at, args=[post])
+        # else:
+        #     post.is_published = True
+        #     post.save()
 
     @action(detail=False, methods=["get"])
     def mine(self, request):
