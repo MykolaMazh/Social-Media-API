@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
+from celery.schedules import crontab
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -168,11 +170,3 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
-
-CELERY_BEAT_SCHEDULE = {
-    # 1️⃣ Fetch latest posts every 10 minutes
-    "fetch_posts_every_10_min": {
-        "task": "social_media.tasks.post_post",
-        "schedule": timedelta(seconds=10),
-    },
-}
