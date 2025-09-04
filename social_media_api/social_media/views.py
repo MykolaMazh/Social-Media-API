@@ -9,6 +9,7 @@ from django.db.models import F
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 from social_media.models import Post, Tag, Comment
+from social_media.tasks import post_publish
 from social_media.serializers import (
     PostSerializer,
     TagSerializer,
@@ -25,20 +26,17 @@ User = get_user_model()
 
 
 class PostViewSet(ModelViewSet):
-    queryset = (
-        Post.objects.select_related("author")
-        .prefetch_related("tags", "comments__author")
-        .annotate(
-            likes=Count("liked"),
-            dislikes=Count("disliked"),
-            comments_number=Count("comments"),
-        )
-    )
     serializer_class = PostSerializer
     permission_classes = [IsAuthorOrReadOnly]
+    queryset = Post.objects.all()
 
     def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
+        post = serializer.save(author=self.request.user)
+        if post.publish_at:
+            post_publish.apply_async(eta=post.publish_at, args=[post.id])
+        else:
+            post.is_published = True
+            post.save()
 
     @action(detail=False, methods=["get"])
     def mine(self, request):
@@ -183,7 +181,16 @@ class PostViewSet(ModelViewSet):
         return Response(serializer.data)
 
     def get_queryset(self):
-        queryset = self.queryset
+        queryset = (
+            Post.objects.filter(is_published=True)
+            .select_related("author")
+            .prefetch_related("tags", "comments__author")
+            .annotate(
+                likes=Count("liked"),
+                dislikes=Count("disliked"),
+                comments_number=Count("comments"),
+            )
+        )
         tags = self.request.query_params.getlist("tag")
 
         author = self.request.query_params.get("author")

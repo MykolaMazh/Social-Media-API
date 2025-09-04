@@ -10,16 +10,19 @@ class CommentInline(admin.TabularInline):  # or admin.StackedInline
 
 # Custom Post admin
 class PostAdmin(admin.ModelAdmin):
+    list_display = ["title", "created_at"]
     inlines = [CommentInline]
     readonly_fields = (
         "title",
         "author",
         "content",
         "photo",
-        "content",
-        "liked",
         "tags",
+        "views",
+        "created_at",
+        "updated_at",
     )
+    exclude = ["viewers", "liked", "disliked"]
 
 
 # Register models

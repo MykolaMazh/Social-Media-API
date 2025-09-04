@@ -33,6 +33,7 @@ class PostSerializer(serializers.ModelSerializer):
             "likes",
             "dislikes",
             "comments_number",
+            "publish_at",
         ]
 
     def __init__(self, *args, **kwargs):
