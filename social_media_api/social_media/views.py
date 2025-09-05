@@ -1,7 +1,7 @@
 from django.db.models.aggregates import Count
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
@@ -136,10 +136,11 @@ class PostViewSet(ModelViewSet):
         detail=True,
         methods=["post"],
         permission_classes=[IsAuthenticated],
+        serializer_class=CommentSerializer,
     )
     def comment(self, request, pk):
         post = self.get_object()
-        serializer = CommentSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             serializer.save(author=request.user, post=post)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -216,7 +217,19 @@ class TagViewSet(ModelViewSet):
 class CommentViewSet(ModelViewSet):
     queryset = Comment.objects.select_related("author", "post", "post__author")
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthorOrReadOnly]
+    permission_classes = [IsAdminUser]
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    def get_permissions(self):
+        if self.action == "list":
+            return [IsAdminUser()]
+        return [IsAuthorOrReadOnly()]
+
+    @extend_schema(
+        summary="Only for admin users",
+        description="Endpoint needs admin authorization.",
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
