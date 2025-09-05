@@ -6,7 +6,12 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.db.models import F
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiParameter,
+    OpenApiTypes,
+    OpenApiExample,
+)
 
 from social_media.models import Post, Tag, Comment
 from social_media.tasks import post_publish
@@ -169,6 +174,27 @@ class PostViewSet(ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Create a post",
+        description="Authenticated users can create a new post. Scheduled publishing is available",
+        request=PostSerializer(),
+        examples=[
+            OpenApiExample(
+                name="New post",
+                description="foto’ and ‘publish_at’ are optional. A post is published immediately unless ‘publish_at’ is specified.",
+                value={
+                    "title": "string",
+                    "content": "string",
+                    "photo": "string",
+                    "publish_at": "2025-09-05T13:05:58.878Z",
+                },
+                request_only=True,
+            )
+        ],
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
