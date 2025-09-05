@@ -43,12 +43,16 @@ class PostViewSet(ModelViewSet):
             post.is_published = True
             post.save()
 
+    @extend_schema(summary="List of user's posts")
     @action(detail=False, methods=["get"])
     def mine(self, request):
-        posts = self.get_queryset().filter(author=self.request.user)
+        posts = self.get_queryset(unpublished=True).filter(
+            author=self.request.user
+        )
         serializer = self.get_serializer(posts, many=True)
         return Response(serializer.data)
 
+    @extend_schema(summary="List of users' posts the current user follow")
     @action(detail=False, methods=["get"])
     def following(self, request):
         user = self.request.user
@@ -93,6 +97,7 @@ class PostViewSet(ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @extend_schema(summary="Like the post, remove own dislike")
     @action(
         detail=True,
         methods=["patch"],
@@ -101,6 +106,7 @@ class PostViewSet(ModelViewSet):
     def like(self, request, pk):
         return self._handle_reaction(request, "like")
 
+    @extend_schema(summary="Remove own like")
     @action(
         detail=True,
         methods=["patch"],
@@ -110,6 +116,7 @@ class PostViewSet(ModelViewSet):
     def like_remove(self, request, pk):
         return self._handle_reaction(request, "like", undo=True)
 
+    @extend_schema(summary="Dislike the post, remove own like")
     @action(
         detail=True,
         methods=["patch"],
@@ -118,6 +125,7 @@ class PostViewSet(ModelViewSet):
     def dislike(self, request, pk):
         return self._handle_reaction(request, "dislike")
 
+    @extend_schema(summary="Remove own dislike")
     @action(
         detail=True,
         methods=["patch"],
@@ -127,6 +135,7 @@ class PostViewSet(ModelViewSet):
     def dislike_remove(self, request, pk):
         return self._handle_reaction(request, "dislike", undo=True)
 
+    @extend_schema(summary="List of the posts the current user has liked")
     @action(
         detail=False,
         methods=["get"],
@@ -207,10 +216,15 @@ class PostViewSet(ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
-    def get_queryset(self):
+    def get_queryset(self, unpublished=False):
         queryset = (
             Post.objects.filter(is_published=True)
-            .select_related("author")
+            if not unpublished
+            else Post.objects.all()
+        )
+
+        queryset = (
+            queryset.select_related("author")
             .prefetch_related("tags", "comments__author")
             .annotate(
                 likes=Count("liked"),
@@ -238,6 +252,10 @@ class TagViewSet(ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = [IsAdminOrReadOnly]
+
+    @extend_schema(summary="Create a tag by admin user")
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
 
 
 class CommentViewSet(ModelViewSet):

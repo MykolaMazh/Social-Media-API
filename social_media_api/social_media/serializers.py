@@ -35,6 +35,7 @@ class PostSerializer(serializers.ModelSerializer):
             "comments_number",
             "publish_at",
         ]
+        extra_kwargs = {"publish_at": {"write_only": True}}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
