@@ -9,13 +9,18 @@ from social_media.models import Post, Comment
 User = get_user_model()
 
 
-REGISTER_URL = reverse("user:register_user")
-ME_URL = reverse("user:me")
-USERS_URL = reverse("user:users")
-POST_LIST_URL = reverse("social_media:post-list")
-POST_LIKE_URL_NAME = "social_media:post-like"
-POST_DISLIKE_URL_NAME = "social_media:post-dislike"
-POST_COMMENT_URL_NAME = "social_media:post-comment"
+REGISTER = "user:register_user"
+ME = "user:me"
+USERS = "user:users"
+POST_LIST = "social_media:post-list"
+POST_LIKE = "social_media:post-like"
+POST_DISLIKE = "social_media:post-dislike"
+POST_COMMENT = "social_media:post-comment"
+FOLLOW = "user:follow"
+FOLLOWERS = "user:followers_list"
+FOLLOWING = "user:following_list"
+COMMENT_LIST = "social_media:comment-list"
+COMMENT_DETAIL = "social_media:comment-detail"
 
 
 class UserApiTests(APITestCase):
@@ -33,7 +38,7 @@ class UserApiTests(APITestCase):
             "password": "newpass123",
             "about_me": "Hello",
         }
-        res = self.client.post(REGISTER_URL, payload)
+        res = self.client.post(reverse(REGISTER), payload)
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         user_exists = User.objects.filter(email=payload["email"]).exists()
         self.assertTrue(user_exists)
@@ -52,7 +57,7 @@ class UserApiTests(APITestCase):
             "about_me": "Updated about me",
             "following": [user1.pk, user2.pk],
         }
-        res = self.client.patch(ME_URL, payload)
+        res = self.client.patch(reverse(ME), payload)
         self.user.refresh_from_db()
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(self.user.about_me, payload["about_me"])
@@ -66,9 +71,50 @@ class UserApiTests(APITestCase):
         payload = {
             "email": "new_email@gmail.com",
         }
-        self.client.patch(ME_URL, payload)
+        self.client.patch(reverse(ME), payload)
         self.user.refresh_from_db()
         self.assertNotEqual(self.user.email, payload["email"])
+
+    def test_follow_user(self):
+        user1 = User.objects.create_user(
+            email="test1@example.com",
+            password="testpass123",
+        )
+        user2 = User.objects.create_user(
+            email="test2@example.com",
+            password="testpass123",
+        )
+
+        self.client.force_authenticate(user1)
+        self.client.patch(reverse(FOLLOW, args=[self.user.id]))
+        self.client.patch(reverse(FOLLOW, args=[user2.id]))
+        res = self.client.get(reverse(FOLLOWING))
+        self.assertEqual(
+            len(res.data),
+            2,
+            msg="The length of the list of following users should be equal to number of times"
+            " the user follow another users.",
+        )
+
+        self.client.delete(reverse(FOLLOW, args=[user2.id]))
+        res = self.client.get(reverse(FOLLOWING))
+        self.assertEqual(
+            len(res.data),
+            1,
+            msg="delete request should unfollow an user",
+        )
+
+        self.client.force_authenticate(user2)
+        self.client.patch(reverse(FOLLOW, args=[self.user.id]))
+
+        self.client.force_authenticate(self.user)
+        res = self.client.get(reverse(FOLLOWERS))
+        self.assertEqual(
+            len(res.data),
+            2,
+            msg="The length of the list of followers should be equal to the number of times"
+            " the user has been followed by other users.",
+        )
 
 
 class PostApiTests(APITestCase):
@@ -83,7 +129,7 @@ class PostApiTests(APITestCase):
             "content": "This is my test post.",
         }
 
-        self.res = self.client.post(POST_LIST_URL, payload)
+        self.res = self.client.post(reverse(POST_LIST), payload)
         self.post = Post.objects.order_by("id").last()
         self.post_url_detail = reverse(
             "social_media:post-detail", args=[self.post.id]
@@ -108,7 +154,7 @@ class PostApiTests(APITestCase):
         self.client.force_authenticate(user=None)
 
         res = self.client.post(
-            POST_LIST_URL,
+            reverse(POST_LIST),
             {
                 "title": "Non User Post.",
                 "content": "Post of unauthorized user.",
@@ -120,7 +166,7 @@ class PostApiTests(APITestCase):
             msg="An unauthenticated user can't create",
         )
 
-        res = self.client.get(POST_LIST_URL)
+        res = self.client.get(reverse(POST_LIST))
         self.assertEqual(
             res.status_code,
             status.HTTP_200_OK,
@@ -158,7 +204,7 @@ class PostApiTests(APITestCase):
     def test_no_like_own_post(self):
         self.create_post()
         res = self.client.patch(
-            reverse(POST_LIKE_URL_NAME, kwargs={"pk": self.post.pk})
+            reverse(POST_LIKE, kwargs={"pk": self.post.pk})
         )
         self.assertEqual(
             res.status_code,
@@ -170,10 +216,10 @@ class PostApiTests(APITestCase):
         self.create_post()
 
         self.create_user("user1")
-        self.client.patch(reverse(POST_LIKE_URL_NAME, args=[self.post.pk]))
+        self.client.patch(reverse(POST_LIKE, args=[self.post.pk]))
 
         self.create_user("user2")
-        self.client.patch(reverse(POST_LIKE_URL_NAME, args=[self.post.pk]))
+        self.client.patch(reverse(POST_LIKE, args=[self.post.pk]))
         self.client.patch(
             reverse("social_media:post-unlike", args=[self.post.pk])
         )
@@ -186,10 +232,10 @@ class PostApiTests(APITestCase):
         self.create_post()
 
         self.create_user("user1")
-        self.client.patch(reverse(POST_DISLIKE_URL_NAME, args=[self.post.pk]))
+        self.client.patch(reverse(POST_DISLIKE, args=[self.post.pk]))
 
         self.create_user("user2")
-        self.client.patch(reverse(POST_DISLIKE_URL_NAME, args=[self.post.pk]))
+        self.client.patch(reverse(POST_DISLIKE, args=[self.post.pk]))
         self.client.patch(
             reverse("social_media:post-undislike", args=[self.post.pk])
         )
@@ -201,12 +247,12 @@ class PostApiTests(APITestCase):
     def test_dislike_like_mutually_exclusive(self):
         self.create_post()
         self.create_user("user1")
-        self.client.patch(reverse(POST_LIKE_URL_NAME, args=[self.post.pk]))
-        self.client.patch(reverse(POST_DISLIKE_URL_NAME, args=[self.post.pk]))
+        self.client.patch(reverse(POST_LIKE, args=[self.post.pk]))
+        self.client.patch(reverse(POST_DISLIKE, args=[self.post.pk]))
         likes = self.post.liked.count()
         dislikes = self.post.disliked.count()
         self.assertEqual((likes, dislikes), (0, 1))
-        self.client.patch(reverse(POST_LIKE_URL_NAME, args=[self.post.pk]))
+        self.client.patch(reverse(POST_LIKE, args=[self.post.pk]))
         self.post.refresh_from_db()
         likes = self.post.liked.count()
         dislikes = self.post.disliked.count()
@@ -217,15 +263,11 @@ class PostApiTests(APITestCase):
         post2 = self.create_post()
         post3 = self.create_post()
         self.create_user("user1")
-        self.client.patch(reverse(POST_LIKE_URL_NAME, args=[post1.pk]))
-        self.client.patch(reverse(POST_LIKE_URL_NAME, args=[post3.pk]))
+        self.client.patch(reverse(POST_LIKE, args=[post1.pk]))
+        self.client.patch(reverse(POST_LIKE, args=[post3.pk]))
         res = self.client.get(reverse("social_media:post-liked"))
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data), 2)
-
-
-COMMENT_LIST_URL = reverse("social_media:comment-list")
-COMMENT_DETAIL_URL_NAME = "social_media:comment-detail"
 
 
 class CommentApiTests(APITestCase):
@@ -242,21 +284,21 @@ class CommentApiTests(APITestCase):
             "content": "Test post content.",
         }
         self.client.force_authenticate(self.user1)
-        self.client.post(POST_LIST_URL, data=payload)
+        self.client.post(reverse(POST_LIST), data=payload)
         self.post = Post.objects.first()
 
     def test_only_own_comment_access(self):
 
         self.client.force_authenticate(self.user2)
         res = self.client.post(
-            COMMENT_LIST_URL,
+            reverse(COMMENT_LIST),
             data={"content": "I fully agree.", "post": self.post.id},
         )
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 
         edited_content = "Awful post."
         self.client.patch(
-            reverse(COMMENT_DETAIL_URL_NAME, kwargs={"pk": self.post.id}),
+            reverse(COMMENT_DETAIL, kwargs={"pk": self.post.id}),
             data={"content": edited_content},
         )
         comment = Comment.objects.first()
@@ -265,7 +307,7 @@ class CommentApiTests(APITestCase):
         self.client.force_authenticate(self.user1)
         edited_content_2 = "Great!!!"
         res = self.client.patch(
-            reverse(COMMENT_DETAIL_URL_NAME, kwargs={"pk": self.post.id}),
+            reverse(COMMENT_DETAIL, kwargs={"pk": self.post.id}),
             data={"content": edited_content_2},
         )
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
@@ -276,7 +318,7 @@ class CommentApiTests(APITestCase):
         self.client.force_authenticate(self.user2)
         comment_content = "New comment"
         res = self.client.post(
-            reverse(POST_COMMENT_URL_NAME, args=[self.post.id]),
+            reverse(POST_COMMENT, args=[self.post.id]),
             data={"content": comment_content, "post": self.post.id},
         )
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)

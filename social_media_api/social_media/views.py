@@ -191,7 +191,8 @@ class PostViewSet(ModelViewSet):
         examples=[
             OpenApiExample(
                 name="New post",
-                description="foto’ and ‘publish_at’ are optional. A post is published immediately unless ‘publish_at’ is specified.",
+                description="foto’ and ‘publish_at’ are optional. A post is published immediately unless ‘publish_at’ is specified."
+                "If you are using a tool like Postman and send field 'foto', you need to send the data with Content-Type: multipart/form-data and choose the file.",
                 value={
                     "title": "string",
                     "content": "string",
