@@ -5,7 +5,7 @@ from social_media.views import PostViewSet, TagViewSet, CommentViewSet
 router = DefaultRouter()
 router.register("posts", PostViewSet)
 router.register("tags", TagViewSet)
-router.register("comments",CommentViewSet)
+router.register("comments", CommentViewSet)
 
 urlpatterns = router.urls
 

@@ -41,7 +41,7 @@ class LogoutView(APIView):
             token = RefreshToken(refresh_token)
             token.blacklist()  # Blacklist the refresh token
             return Response({"message": "Successfully logged out"}, status=200)
-        except Exception as e:
+        except Exception:
             return Response({"error": "Invalid token"}, status=400)
 
 
@@ -52,25 +52,30 @@ class LogoutView(APIView):
     parameters=[
         OpenApiParameter(
             name="email",
-            description="List of users matching the searched email. Case-insensitive",
+            description="List of users matching the searched email."
+            " Case-insensitive",
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
         ),
         OpenApiParameter(
             name="posts",
-            description="List of users who have published at least the number of posts specified in the parameter.",
+            description="List of users who have published at least "
+            "the number of posts specified in the parameter.",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.QUERY,
         ),
         OpenApiParameter(
             name="followers",
-            description="List of users who have number of followers at least the number of followers specified in the parameter.",
+            description="List of users who have number of followers at least "
+            "the number of followers specified in the parameter.",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.QUERY,
         ),
         OpenApiParameter(
             name="reacted",
-            description="List of users whose poosts have been liked os disliked at least the number times specified in the parameter.",
+            description="List of users whose posts have been liked or"
+            " disliked at least the number times specified "
+            "in the parameter.",
             type=OpenApiTypes.INT,
             location=OpenApiParameter.QUERY,
         ),
@@ -173,13 +178,15 @@ class FollowUserAPIView(APIView):
                     OpenApiExample(
                         name="Successfull followed",
                         value={
-                            "message": "You are now following 'user2@gmail.com'."
+                            "message": "You are now following"
+                            " 'user2@gmail.com'."
                         },
                     ),
                     OpenApiExample(
                         name="Already followed",
                         value={
-                            "message": "You already follow 'user2@gmail.com'."
+                            "message": "You already follow "
+                            "'user2@gmail.com'."
                         },
                     ),
                 ],
@@ -213,7 +220,7 @@ class FollowUserAPIView(APIView):
 
         user.following.add(user_to_follow)
         return Response(
-            {"message": f"You are now following '{user_to_follow.email}'."},
+            {"message": f"You now follow '{user_to_follow.email}'."},
             status=status.HTTP_200_OK,
         )
 
@@ -237,7 +244,8 @@ class FollowUserAPIView(APIView):
                     OpenApiExample(
                         name="Successfull",
                         value={
-                            "message": "You are now not follow 'user2@gmail.com'."
+                            "message": "You now don't follow "
+                            "'user2@gmail.com'."
                         },
                     )
                 ],
@@ -247,9 +255,8 @@ class FollowUserAPIView(APIView):
     def delete(self, request, pk):
         user = request.user
         user_to_follow = get_object_or_404(User, pk=pk)
-
         user.following.remove(user_to_follow)
         return Response(
-            {"message": f"You are now not follow '{user_to_follow.email}'."},
+            {"message": f"You now don't follow '{user_to_follow.email}'."},
             status=status.HTTP_200_OK,
         )

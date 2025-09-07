@@ -92,8 +92,8 @@ class UserApiTests(APITestCase):
         self.assertEqual(
             len(res.data),
             2,
-            msg="The length of the list of following users should be equal to number of times"
-            " the user follow another users.",
+            msg="The length of the list of following users should be equal "
+            "to number of times the user follow another users.",
         )
 
         self.client.delete(reverse(FOLLOW, args=[user2.id]))
@@ -112,8 +112,8 @@ class UserApiTests(APITestCase):
         self.assertEqual(
             len(res.data),
             2,
-            msg="The length of the list of followers should be equal to the number of times"
-            " the user has been followed by other users.",
+            msg="The length of the list of followers should be equal to the "
+            "number of times the user has been followed by other users.",
         )
 
 
@@ -181,8 +181,7 @@ class PostApiTests(APITestCase):
         )
 
     def test_staff_can_delete_posts(self):
-        self.create_post()
-        staff_user = self.create_user("staffuser", is_staff=True)
+        self.create_user("staffuser", is_staff=True)
 
         res = self.client.patch(
             self.post_url_detail,
@@ -259,8 +258,8 @@ class PostApiTests(APITestCase):
         self.assertEqual((likes, dislikes), (1, 0))
 
     def test_liked_post_list(self):
+        self.create_post()
         post1 = self.create_post()
-        post2 = self.create_post()
         post3 = self.create_post()
         self.create_user("user1")
         self.client.patch(reverse(POST_LIKE, args=[post1.pk]))

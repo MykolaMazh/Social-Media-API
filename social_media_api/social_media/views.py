@@ -166,7 +166,8 @@ class PostViewSet(ModelViewSet):
         parameters=[
             OpenApiParameter(
                 name="tag",
-                description="Search by tag name, cab be multiple search (?tag=movies&tag=celebrities)",
+                description="Search by tag name, cab be multiple search "
+                "(?tag=movies&tag=celebrities)",
                 required=False,
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
@@ -186,13 +187,18 @@ class PostViewSet(ModelViewSet):
 
     @extend_schema(
         summary="Create a post",
-        description="Authenticated users can create a new post. Scheduled publishing is available",
+        description="Authenticated users can create a new post. "
+        "Scheduled publishing is available",
         request=PostSerializer(),
         examples=[
             OpenApiExample(
                 name="New post",
-                description="foto’ and ‘publish_at’ are optional. A post is published immediately unless ‘publish_at’ is specified."
-                "If you are using a tool like Postman and send field 'foto', you need to send the data with Content-Type: multipart/form-data and choose the file.",
+                description="foto’ and ‘publish_at’ are optional. A post is "
+                "published immediately unless ‘publish_at’ is "
+                "specified. If you are using a tool like Postman "
+                "and send field 'foto', you need to send the data "
+                "with Content-Type: multipart/form-data and "
+                "choose the file.",
                 value={
                     "title": "string",
                     "content": "string",
