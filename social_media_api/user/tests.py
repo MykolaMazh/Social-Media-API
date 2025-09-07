@@ -13,6 +13,7 @@ REGISTER = "user:register_user"
 ME = "user:me"
 USERS = "user:users"
 POST_LIST = "social_media:post-list"
+POST_DETAIL = "social_media:post-detail"
 POST_LIKE = "social_media:post-like"
 POST_DISLIKE = "social_media:post-dislike"
 POST_COMMENT = "social_media:post-comment"
@@ -131,9 +132,7 @@ class PostApiTests(APITestCase):
 
         self.res = self.client.post(reverse(POST_LIST), payload)
         self.post = Post.objects.order_by("id").last()
-        self.post_url_detail = reverse(
-            "social_media:post-detail", args=[self.post.id]
-        )
+        self.post_url_detail = reverse(POST_DETAIL, args=[self.post.id])
         self.post.refresh_from_db()
         return self.post
 
@@ -181,8 +180,8 @@ class PostApiTests(APITestCase):
         )
 
     def test_staff_can_delete_posts(self):
+        self.create_post()
         self.create_user("staffuser", is_staff=True)
-
         res = self.client.patch(
             self.post_url_detail,
             {"title": "Title edited"},
