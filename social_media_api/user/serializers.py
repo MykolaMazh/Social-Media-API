@@ -12,7 +12,13 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "image",
             "about_me",
         )
-        extra_kwargs = {"password": {"write_only": True, "min_length": 5}}
+        extra_kwargs = {
+            "password": {
+                "write_only": True,
+                "min_length": 5,
+                "style": {"input_type": "password"},
+            }
+        }
 
     def create(self, validated_data):
         return get_user_model().objects.create_user(**validated_data)
