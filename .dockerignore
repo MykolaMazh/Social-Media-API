@@ -1,0 +1,16 @@
+.git
+.gitignore
+
+__pycache__/
+
+venv/
+
+.env
+
+*.sqlite3
+
+.idea/
+
+staticfiles/
+static/
+media/
