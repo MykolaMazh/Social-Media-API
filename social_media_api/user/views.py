@@ -35,6 +35,9 @@ class CreateUserView(generics.CreateAPIView):
 
 
 class LogoutView(APIView):
+    @extend_schema(
+        summary="Blacklist the refresh token",
+    )
     def post(self, request):
         try:
             refresh_token = request.data["refresh"]
