@@ -105,3 +105,12 @@ This project uses **JWT authentication** via `/api/v1/user/token/` after registr
 ## 📄 API Documentation
 
 - Documentation for endpoints is provided by Swagger UI using `drf-spectacular`: url -`/api/doc/swagger/`
+
+### Tests
+```ini
+cd social_media_api
+python manage.py tests
+```
+
+### App in production on `render.com` connected to PostgreSQL  - `https://social-media-api-rx5z.onrender.com`
+
