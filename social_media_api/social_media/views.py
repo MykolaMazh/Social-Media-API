@@ -1,0 +1,342 @@
+from django.db.models.aggregates import Count
+from rest_framework import status
+from rest_framework.viewsets import ModelViewSet, GenericViewSet
+from rest_framework.mixins import (
+    ListModelMixin,
+    UpdateModelMixin,
+    DestroyModelMixin,
+    RetrieveModelMixin,
+)
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.contrib.auth import get_user_model
+from django.db.models import F
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiParameter,
+    OpenApiTypes,
+    OpenApiExample,
+    OpenApiResponse,
+)
+
+from social_media.models import Post, Tag, Comment
+from social_media.tasks import post_publish
+from social_media.serializers import (
+    PostSerializer,
+    TagSerializer,
+    CommentSerializer,
+    PostRetrieveSerializer,
+)
+from .permissions import (
+    IsAuthorOrReadOnly,
+    IsAdminOrReadOnly,
+    IsAuthenticatedAndNotAuthor,
+)
+
+
+User = get_user_model()
+
+
+def message_schema(summary, action):
+    return extend_schema(
+        summary=summary,
+        description="Don't need request body, edit the post instance with post id provided in url",
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                description="Response",
+                examples=[
+                    OpenApiExample(
+                        name="Success response message",
+                        value={
+                            "message": f'You {action} to "Post_title" by user1@gmail.com from Saturday 06 Sep 2025 05:59:22'
+                        },
+                    )
+                ],
+            )
+        },
+    )
+
+
+class PostViewSet(ModelViewSet):
+    serializer_class = PostSerializer
+    permission_classes = [IsAuthorOrReadOnly]
+    queryset = Post.objects.all()
+
+    def perform_create(self, serializer):
+        post = serializer.save(author=self.request.user)
+        if post.publish_at:
+            post_publish.apply_async(eta=post.publish_at, args=[post.id])
+        else:
+            post.is_published = True
+            post.save()
+
+    @extend_schema(summary="List of user's posts")
+    @action(detail=False, methods=["get"])
+    def mine(self, request):
+        posts = self.get_queryset(unpublished=True).filter(
+            author=self.request.user
+        )
+        serializer = self.get_serializer(posts, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(summary="List of users' posts the current user follow")
+    @action(detail=False, methods=["get"])
+    def following(self, request):
+        user = self.request.user
+        following_users = user.following.all()
+        posts = self.get_queryset().filter(author__in=following_users)
+        serializer = self.get_serializer(posts, many=True)
+        return Response(serializer.data)
+
+    def _handle_reaction(self, request, action_type: str, undo: bool = False):
+        user = request.user
+        post = self.get_object()
+        if post.author == user:
+            return Response(
+                {"error": "You cannot react to your own post."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        like_exists = post.liked.filter(id=user.id).exists()
+        dislike_exists = post.disliked.filter(id=user.id).exists()
+        if action_type == "like":
+            if undo and like_exists:
+                post.liked.remove(user)
+            else:
+                if dislike_exists:
+                    post.disliked.remove(user)
+                post.liked.add(user)
+        elif action_type == "dislike":
+            if undo and dislike_exists:
+                post.disliked.remove(user)
+            else:
+                if like_exists:
+                    post.liked.remove(user)
+                post.disliked.add(user)
+        action_verb = action_type if not undo else f"do not {action_type}"
+        return Response(
+            {
+                "message": (
+                    f'You {action_verb} "{post.title}" by {post.author} '
+                    f'from {post.created_at.strftime("%A %d %b %Y %H:%M:%S")}'
+                )
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @message_schema(
+        summary="Like the post, remove own dislike", action="added like"
+    )
+    @action(
+        detail=True,
+        methods=["patch"],
+        permission_classes=[IsAuthenticatedAndNotAuthor],
+    )
+    def like(self, request, pk):
+        return self._handle_reaction(request, "like")
+
+    @message_schema(summary="Remove own like", action="removed like")
+    @action(
+        detail=True,
+        methods=["patch"],
+        url_name="unlike",
+        permission_classes=[IsAuthenticatedAndNotAuthor],
+    )
+    def like_remove(self, request, pk):
+        return self._handle_reaction(request, "like", undo=True)
+
+    @message_schema(
+        summary="Dislike the post, remove own like", action="added dislike"
+    )
+    @action(
+        detail=True,
+        methods=["patch"],
+        permission_classes=[IsAuthenticatedAndNotAuthor],
+    )
+    def dislike(self, request, pk):
+        return self._handle_reaction(request, "dislike")
+
+    @message_schema(summary="Remove own dislike", action="remove dislike")
+    @action(
+        detail=True,
+        methods=["patch"],
+        permission_classes=[IsAuthenticatedAndNotAuthor],
+        url_name="undislike",
+    )
+    def dislike_remove(self, request, pk):
+        return self._handle_reaction(request, "dislike", undo=True)
+
+    @extend_schema(summary="List of the posts the current user has liked")
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAuthenticated],
+    )
+    def liked(self, request):
+        posts = self.get_queryset().filter(liked=request.user)
+        serializer = self.get_serializer(posts, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(
+        summary="Add comment to the post.",
+        # request=UserListSerializer(),
+        examples=[
+            OpenApiExample(
+                name="Comment example",
+                value={
+                    "content": "Some comment for the post.",
+                },
+                request_only=True,
+            )
+        ],
+        # Define possible responses with examples
+        responses={
+            200: OpenApiResponse(
+                response=CommentSerializer(),
+                description="Created comment",
+            )
+        },
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[IsAuthenticated],
+        serializer_class=CommentSerializer,
+    )
+    def comment(self, request, pk):
+        post = self.get_object()
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save(author=request.user, post=post)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        summary="Post list",
+        description="Get a list of posts, search by criteria.",
+        parameters=[
+            OpenApiParameter(
+                name="tag",
+                description="Search by tag name, cab be multiple search "
+                "(?tag=movies&tag=celebrities)",
+                required=False,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="author",
+                description="Search by author email, case-insensitive",
+                required=False,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
+        ],
+        request=PostSerializer(),
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Create a post",
+        description="Authenticated users can create a new post. "
+        "Scheduled publishing is available",
+        request=PostSerializer(),
+        examples=[
+            OpenApiExample(
+                name="New post",
+                description="foto’ and ‘publish_at’ are optional. A post is "
+                "published immediately unless ‘publish_at’ is "
+                "specified. If you are using a tool like Postman "
+                "and send field 'foto', you need to send the data "
+                "with Content-Type: multipart/form-data and "
+                "choose the file.",
+                value={
+                    "title": "string",
+                    "content": "string",
+                    "photo": "string",
+                    "publish_at": "2025-09-05T13:05:58.878Z",
+                },
+                request_only=True,
+            )
+        ],
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        user = request.user
+        if user != instance.author and user not in instance.viewers.all():
+            instance.views = F("views") + 1
+            instance.viewers.add(user)
+            instance.save()
+            instance.refresh_from_db()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def get_queryset(self, unpublished=False):
+        queryset = (
+            Post.objects.filter(is_published=True)
+            if not unpublished
+            else Post.objects.all()
+        )
+
+        queryset = (
+            queryset.select_related("author")
+            .prefetch_related("tags", "comments__author")
+            .annotate(
+                likes=Count("liked"),
+                dislikes=Count("disliked"),
+                comments_number=Count("comments"),
+            )
+        )
+        tags = self.request.query_params.getlist("tag")
+
+        author = self.request.query_params.get("author")
+        if tags:
+            queryset = queryset.filter(tags__title__in=tags).distinct()
+        if author:
+            queryset = queryset.filter(author__email__icontains=author)
+
+        return queryset
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return PostRetrieveSerializer
+        return PostSerializer
+
+
+class TagViewSet(ModelViewSet):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    permission_classes = [IsAdminOrReadOnly]
+
+    @extend_schema(summary="Create a tag by admin user")
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+
+class CommentViewSet(
+    GenericViewSet,
+    ListModelMixin,
+    UpdateModelMixin,
+    RetrieveModelMixin,
+    DestroyModelMixin,
+):
+    queryset = Comment.objects.select_related("author", "post", "post__author")
+    serializer_class = CommentSerializer
+    permission_classes = [IsAdminUser]
+
+    def get_permissions(self):
+        if self.action == "list":
+            return [IsAdminUser()]
+        return [IsAuthorOrReadOnly()]
+
+    @extend_schema(
+        summary="Only for admin users",
+        description="Endpoint needs admin authorization.",
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)

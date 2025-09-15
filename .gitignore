@@ -3,3 +3,6 @@ venv/
 .idea/
 db.sqlite3
 .env
+media/
+pyproject.toml
+dump.json
