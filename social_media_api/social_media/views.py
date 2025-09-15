@@ -1,6 +1,12 @@
 from django.db.models.aggregates import Count
 from rest_framework import status
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, GenericViewSet
+from rest_framework.mixins import (
+    ListModelMixin,
+    UpdateModelMixin,
+    DestroyModelMixin,
+    RetrieveModelMixin,
+)
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -265,7 +271,13 @@ class TagViewSet(ModelViewSet):
         return super().create(request, *args, **kwargs)
 
 
-class CommentViewSet(ModelViewSet):
+class CommentViewSet(
+    GenericViewSet,
+    ListModelMixin,
+    UpdateModelMixin,
+    RetrieveModelMixin,
+    DestroyModelMixin,
+):
     queryset = Comment.objects.select_related("author", "post", "post__author")
     serializer_class = CommentSerializer
     permission_classes = [IsAdminUser]

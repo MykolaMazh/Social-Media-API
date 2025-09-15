@@ -289,8 +289,8 @@ class CommentApiTests(APITestCase):
 
         self.client.force_authenticate(self.user2)
         res = self.client.post(
-            reverse(COMMENT_LIST),
-            data={"content": "I fully agree.", "post": self.post.id},
+            reverse(POST_COMMENT, args=[self.post.id]),
+            data={"content": "I fully agree."},
         )
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 
@@ -317,7 +317,7 @@ class CommentApiTests(APITestCase):
         comment_content = "New comment"
         res = self.client.post(
             reverse(POST_COMMENT, args=[self.post.id]),
-            data={"content": comment_content, "post": self.post.id},
+            data={"content": comment_content},
         )
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         comment = Comment.objects.first()
